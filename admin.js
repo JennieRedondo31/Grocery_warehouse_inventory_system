@@ -192,9 +192,9 @@ const checkAdmin = () => {
     if (adminName) {
 
         adminName.textContent =
-            (user.FirstName || "") +
+            ((user.FirstName || "") +
             " " +
-            (user.LastName || "");
+            (user.LastName || "")).trim();
 
     }
 
@@ -725,6 +725,41 @@ const saveUser = async () => {
         return;
     }
 
+    const loggedInUser =
+        JSON.parse(
+            localStorage.getItem("user") || "null"
+        );
+
+    if (
+        loggedInUser &&
+        id !== "" &&
+        Number(loggedInUser.UserID) === Number(id)
+    ) {
+
+        loggedInUser.UserName = username;
+        loggedInUser.FirstName = firstName;
+        loggedInUser.LastName = lastName;
+        loggedInUser.Email = email;
+        loggedInUser.RoleID = roleID;
+        loggedInUser.UserStatus = userStatus;
+
+        localStorage.setItem(
+            "user",
+            JSON.stringify(loggedInUser)
+        );
+
+        const adminName =
+            document.getElementById("admin-name");
+
+        if (adminName) {
+
+            adminName.textContent =
+                firstName + " " + lastName;
+
+        }
+
+    }
+
     clearUser();
 
     displayUsers();
@@ -833,6 +868,28 @@ const toggleUser = async (id, currentStatus) => {
             ? "Inactive"
             : "Active";
 
+    const loggedInUser =
+        JSON.parse(
+            localStorage.getItem("user") || "null"
+        );
+
+    if (
+        loggedInUser &&
+        Number(loggedInUser.UserID) === Number(id) &&
+        newStatus === "Inactive"
+    ) {
+
+        if (
+            !confirm(
+                "You are deactivating your own account. Continue?"
+            )
+        ) {
+
+            return;
+        }
+
+    }
+
     const response =
         await sendRequest(
             "toggleUserStatus",
@@ -847,6 +904,33 @@ const toggleUser = async (id, currentStatus) => {
         alert(response.message);
 
         return;
+    }
+
+    if (
+        loggedInUser &&
+        Number(loggedInUser.UserID) === Number(id)
+    ) {
+
+        loggedInUser.UserStatus = newStatus;
+
+        localStorage.setItem(
+            "user",
+            JSON.stringify(loggedInUser)
+        );
+
+        if (newStatus === "Inactive") {
+
+            alert(
+                "Your account has been deactivated."
+            );
+
+            localStorage.removeItem("user");
+
+            window.location.href = "login.html";
+
+            return;
+        }
+
     }
 
     displayUsers();
