@@ -1998,10 +1998,14 @@ const displayProducts = async () => {
                     </button>
 
                     <button
-                        class="btn btn-sm btn-danger"
-                        onclick="deleteProduct(${product.ProductID})"
+                        class="btn btn-sm btn-secondary"
+                        onclick="toggleProduct(${product.ProductID}, ${product.IsActive})"
                     >
-                        Delete
+                        ${
+                            product.IsActive == 1
+                                ? "Deactivate"
+                                : "Activate"
+                        }
                     </button>
 
                 </td>
@@ -2175,6 +2179,62 @@ const editProduct = async id => {
 
     document.getElementById("product-status").value =
         product.IsActive;
+
+};
+
+
+const toggleProduct = async (id, currentStatus) => {
+
+    const newStatus =
+        Number(currentStatus) === 1
+            ? 0
+            : 1;
+
+    const getResponse =
+        await sendRequest(
+            "getProduct",
+            {
+                ProductID: id
+            }
+        );
+
+    if (!getResponse.success) {
+
+        alert(getResponse.message);
+
+        return;
+    }
+
+    const product =
+        getResponse.data;
+
+    const updateResponse =
+        await sendRequest(
+            "updateProduct",
+            {
+                ProductID: product.ProductID,
+                SKU: product.SKU,
+                Barcode: product.Barcode,
+                ProductName: product.ProductName,
+                Description: product.Description,
+                UnitOfMeasure: product.UnitOfMeasure,
+                MinStockLevel: product.MinStockLevel,
+                BinID: product.BinID,
+                CategoryID: product.CategoryID,
+                IsActive: newStatus
+            }
+        );
+
+    if (!updateResponse.success) {
+
+        alert(updateResponse.message);
+
+        return;
+    }
+
+    displayProducts();
+
+    displayAuditLogs();
 
 };
 
