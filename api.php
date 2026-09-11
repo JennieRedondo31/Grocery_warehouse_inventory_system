@@ -101,113 +101,136 @@ try {
 
         case "login":
 
-            $usernameValue = trim($data["username"] ?? "");
-            $plainPassword = $data["password"] ?? "";
+    $usernameValue = trim($data["username"] ?? "");
+    $plainPassword = $data["password"] ?? "";
 
-            if ($usernameValue === "" || $plainPassword === "") {
+    if ($usernameValue === "" || $plainPassword === "") {
 
-                response(
-                    false,
-                    "Username and password are required."
-                );
+        response(
+            false,
+            "Username and password are required."
+        );
 
-            }
+    }
 
-            $username = $conn->quote($usernameValue);
+    $username = $conn->quote($usernameValue);
 
-            $sql = "
-                SELECT
-                    u.UserID,
-                    u.UserName,
-                    u.Password,
-                    u.FirstName,
-                    u.LastName,
-                    u.Email,
-                    u.RoleID,
-                    u.UserStatus,
-                    r.RoleName
-                FROM `User` u
-                INNER JOIN Role r
-                    ON u.RoleID = r.RoleID
-                WHERE
-                    u.UserName = $username
-                    AND u.UserStatus = 'Active'
-                    AND r.IsActive = 1
-                LIMIT 1
-            ";
+    $sql = "
+        SELECT
+            u.UserID,
+            u.UserName,
+            u.Password,
+            u.FirstName,
+            u.LastName,
+            u.Email,
+            u.RoleID,
+            u.UserStatus,
+            r.RoleName,
+            r.IsActive AS RoleActive
+        FROM `User` u
+        INNER JOIN Role r
+            ON u.RoleID = r.RoleID
+        WHERE
+            u.UserName = $username
+        LIMIT 1
+    ";
 
-            $stmt = $conn->query($sql);
+    $stmt = $conn->query($sql);
 
-            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            if (!$user) {
+    if (!$user) {
 
-                response(
-                    false,
-                    "Invalid username or password."
-                );
+        response(
+            false,
+            "Invalid username or password."
+        );
 
-            }
+    }
 
-            $storedPassword = $user["Password"];
+    $storedPassword = $user["Password"];
 
-            $passwordIsValid = false;
+    $passwordIsValid = false;
 
-            if (
-                password_get_info($storedPassword)["algo"] !== 0
-            ) {
+    if (
+        password_get_info($storedPassword)["algo"] !== 0
+    ) {
 
-                $passwordIsValid =
-                    password_verify(
-                        $plainPassword,
-                        $storedPassword
-                    );
-
-            } else {
-
-                if ($plainPassword === $storedPassword) {
-
-                    $passwordIsValid = true;
-
-                    $newHash =
-                        password_hash(
-                            $plainPassword,
-                            PASSWORD_DEFAULT
-                        );
-
-                    $newHash = $conn->quote($newHash);
-
-                    $userID =
-                        (int)$user["UserID"];
-
-                    $updatePassword = "
-                        UPDATE `User`
-                        SET Password = $newHash
-                        WHERE UserID = $userID
-                    ";
-
-                    $conn->exec($updatePassword);
-                }
-            }
-
-            if (!$passwordIsValid) {
-
-                response(
-                    false,
-                    "Invalid username or password."
-                );
-
-            }
-
-            unset($user["Password"]);
-
-            response(
-                true,
-                "Login successful.",
-                $user
+        $passwordIsValid =
+            password_verify(
+                $plainPassword,
+                $storedPassword
             );
 
-            break;
+    } else {
+
+        if ($plainPassword === $storedPassword) {
+
+            $passwordIsValid = true;
+
+            $newHash =
+                password_hash(
+                    $plainPassword,
+                    PASSWORD_DEFAULT
+                );
+
+            $newHash =
+                $conn->quote($newHash);
+
+            $userID =
+                (int)$user["UserID"];
+
+            $updatePassword = "
+                UPDATE `User`
+                SET Password = $newHash
+                WHERE UserID = $userID
+            ";
+
+            $conn->exec(
+                $updatePassword
+            );
+
+        }
+
+    }
+
+    if (!$passwordIsValid) {
+
+        response(
+            false,
+            "Invalid username or password."
+        );
+
+    }
+
+    if ($user["UserStatus"] !== "Active") {
+
+        response(
+            false,
+            "Your account has been deactivated. Please contact the administrator."
+        );
+
+    }
+
+    if ((int)$user["RoleActive"] !== 1) {
+
+        response(
+            false,
+            "Your role is inactive. Please contact the administrator."
+        );
+
+    }
+
+    unset($user["Password"]);
+    unset($user["RoleActive"]);
+
+    response(
+        true,
+        "Login successful.",
+        $user
+    );
+
+    break;
 
 
         case "getRoles":
